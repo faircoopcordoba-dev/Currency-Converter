@@ -49,113 +49,159 @@
     <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
         <h1 class="text-2xl font-bold text-center mb-6">Convertidor de Divisas</h1>
         
-        <!-- Selección de región/país -->
+        <!-- Región/Contexto (Opcional) -->
         <div class="mb-4">
-            <label for="region" class="block text-sm font-medium text-gray-700">Región/País</label>
-            <select id="region" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
-                <option value="USD-US">Estados Unidos (USD)</option>
-                <option value="EUR-EU">Europa (EUR)</option>
-                <option value="MXN-MX">México (MXN)</option>
-                <option value="ARS-AR">Argentina (ARS)</option>
-                <option value="BRL-BR">Brasil (BRL)</option>
-                <option value="CLP-CL">Chile (CLP)</option>
-            </select>
+            <label for="region" class="block text-sm font-medium text-gray-700">Región/Contexto (Opcional)</label>
+            <input type="text" id="region" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ej: Frontera Norte">
         </div>
 
-        <!-- Selección de divisa destino -->
+        <!-- Divisa Base -->
         <div class="mb-4">
-            <label for="targetCurrency" class="block text-sm font-medium text-gray-700">Divisa Destino</label>
-            <select id="targetCurrency" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
-                <option value="USD">USD - Dólar Estadounidense</option>
-                <option value="EUR">EUR - Euro</option>
-                <option value="MXN">MXN - Peso Mexicano</option>
-                <option value="ARS">ARS - Peso Argentino</option>
-                <option value="BRL">BRL - Real Brasileño</option>
-                <option value="CLP">CLP - Peso Chileno</option>
-            </select>
+            <label for="baseCurrency" class="block text-sm font-medium text-gray-700">Nombre de Divisa Base</label>
+            <input type="text" id="baseCurrency" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ej: MXN, Moneda A">
+        </div>
+        <div class="mb-4">
+            <label for="baseValue" class="block text-sm font-medium text-gray-700">Valor por Unidad (Base)</label>
+            <input type="number" id="baseValue" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ej: 0.05" min="0" step="0.0001">
+        </div>
+        <div class="mb-4">
+            <label for="baseAmount" class="block text-sm font-medium text-gray-700">Monto en Divisa Base</label>
+            <input type="number" id="baseAmount" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ingrese monto en Base" min="0" step="0.01">
         </div>
 
-        <!-- Campo para el monto -->
+        <!-- Divisa Destino -->
         <div class="mb-4">
-            <label for="amount" class="block text-sm font-medium text-gray-700">Monto</label>
-            <input type="number" id="amount" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ingrese el monto" min="0" step="0.01">
+            <label for="targetCurrency" class="block text-sm font-medium text-gray-700">Nombre de Divisa Destino</label>
+            <input type="text" id="targetCurrency" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ej: USD, Moneda B">
+        </div>
+        <div class="mb-4">
+            <label for="targetValue" class="block text-sm font-medium text-gray-700">Valor por Unidad (Destino)</label>
+            <input type="number" id="targetValue" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ej: 1.00" min="0" step="0.0001">
+        </div>
+        <div class="mb-4">
+            <label for="targetAmount" class="block text-sm font-medium text-gray-700">Monto en Divisa Destino</label>
+            <input type="number" id="targetAmount" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ingrese monto en Destino" min="0" step="0.01">
         </div>
 
-        <!-- Botón de conversión -->
-        <button id="convertBtn" class="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Convertir</button>
+        <!-- Botón de Conversión -->
+        <button id="convertBtn" class="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 disabled:bg-gray-400" disabled>Convertir</button>
 
-        <!-- Área de resultados -->
+        <!-- Resultados -->
         <div id="result" class="mt-6 text-center">
-            <p id="exchangeRate" class="text-sm text-gray-600"></p>
+            <p id="rateDisplay" class="text-sm text-gray-600"></p>
             <p id="convertedAmount" class="text-lg font-semibold"></p>
+            <p id="contextDisplay" class="text-xs text-gray-500 mt-2"></p>
         </div>
     </div>
 
     <script>
-        const apiKey = 'YOUR_EXCHANGERATE_API_KEY'; // Replace with your ExchangeRate-API key
-        const regionSelect = document.getElementById('region');
-        const targetCurrencySelect = document.getElementById('targetCurrency');
-        const amountInput = document.getElementById('amount');
+        const regionInput = document.getElementById('region');
+        const baseCurrencyInput = document.getElementById('baseCurrency');
+        const baseValueInput = document.getElementById('baseValue');
+        const baseAmountInput = document.getElementById('baseAmount');
+        const targetCurrencyInput = document.getElementById('targetCurrency');
+        const targetValueInput = document.getElementById('targetValue');
+        const targetAmountInput = document.getElementById('targetAmount');
         const convertBtn = document.getElementById('convertBtn');
-        const exchangeRateDisplay = document.getElementById('exchangeRate');
+        const rateDisplay = document.getElementById('rateDisplay');
         const convertedAmountDisplay = document.getElementById('convertedAmount');
+        const contextDisplay = document.getElementById('contextDisplay');
 
-        // Update base currency based on region selection
-        regionSelect.addEventListener('change', () => {
-            const [baseCurrency] = regionSelect.value.split('-');
-            updateCurrencies(baseCurrency);
+        // Bloquear el otro campo de monto cuando uno tiene valor
+        baseAmountInput.addEventListener('input', () => {
+            if (baseAmountInput.value.trim()) {
+                targetAmountInput.disabled = true;
+                targetAmountInput.value = '';
+            } else {
+                targetAmountInput.disabled = false;
+            }
+            checkFieldsComplete();
         });
 
-        // Fetch exchange rates and perform conversion
-        async function convertCurrency() {
-            const [baseCurrency] = regionSelect.value.split('-');
-            const targetCurrency = targetCurrencySelect.value;
-            const amount = parseFloat(amountInput.value);
+        targetAmountInput.addEventListener('input', () => {
+            if (targetAmountInput.value.trim()) {
+                baseAmountInput.disabled = true;
+                baseAmountInput.value = '';
+            } else {
+                baseAmountInput.disabled = false;
+            }
+            checkFieldsComplete();
+        });
 
-            if (!amount || amount <= 0) {
-                convertedAmountDisplay.textContent = 'Por favor, ingrese un monto válido.';
+        // Verificar si todos los campos obligatorios están completos
+        function checkFieldsComplete() {
+            const baseCurrency = baseCurrencyInput.value.trim();
+            const baseValue = parseFloat(baseValueInput.value);
+            const targetCurrency = targetCurrencyInput.value.trim();
+            const targetValue = parseFloat(targetValueInput.value);
+            const baseAmount = parseFloat(baseAmountInput.value);
+            const targetAmount = parseFloat(targetAmountInput.value);
+
+            const hasOneAmount = (!isNaN(baseAmount) && baseAmount > 0) || (!isNaN(targetAmount) && targetAmount > 0);
+            const isComplete = baseCurrency && targetCurrency && !isNaN(baseValue) && baseValue > 0 &&
+                              !isNaN(targetValue) && targetValue > 0 && hasOneAmount;
+
+            convertBtn.disabled = !isComplete;
+            return isComplete;
+        }
+
+        // Actualizar estado del botón al cambiar inputs
+        [baseCurrencyInput, baseValueInput, targetCurrencyInput, targetValueInput, baseAmountInput, targetAmountInput].forEach(input => {
+            input.addEventListener('input', checkFieldsComplete);
+        });
+
+        // Mostrar contexto/región
+        regionInput.addEventListener('input', () => {
+            contextDisplay.textContent = regionInput.value.trim() ? `Contexto: ${regionInput.value.trim()}` : '';
+        });
+
+        // Realizar conversión
+        convertBtn.addEventListener('click', () => {
+            if (!checkFieldsComplete()) {
+                convertedAmountDisplay.textContent = 'Por favor, complete todos los campos requeridos.';
                 return;
             }
 
-            try {
-                const response = await fetch(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/${baseCurrency}`);
-                const data = await response.json();
+            const baseCurrency = baseCurrencyInput.value.trim();
+            const baseValue = parseFloat(baseValueInput.value);
+            const targetCurrency = targetCurrencyInput.value.trim();
+            const targetValue = parseFloat(targetValueInput.value);
+            const baseAmount = parseFloat(baseAmountInput.value);
+            const targetAmount = parseFloat(targetAmountInput.value);
 
-                if (data.result === 'success') {
-                    const rate = data.conversion_rates[targetCurrency];
-                    const convertedAmount = (amount * rate).toFixed(2);
-
-                    exchangeRateDisplay.textContent = `1 ${baseCurrency} = ${rate.toFixed(4)} ${targetCurrency}`;
-                    convertedAmountDisplay.textContent = `${amount} ${baseCurrency} = ${convertedAmount} ${targetCurrency}`;
-                } else {
-                    convertedAmountDisplay.textContent = 'Error al obtener las tasas de cambio.';
-                }
-            } catch (error) {
-                convertedAmountDisplay.textContent = 'Error de conexión con la API.';
+            // Validaciones
+            if (baseCurrency === targetCurrency) {
+                convertedAmountDisplay.textContent = 'Error: Las divisas deben tener nombres diferentes.';
+                return;
             }
-        }
-
-        // Update currency dropdowns to avoid selecting the same currency
-        function updateCurrencies(baseCurrency) {
-            const targetOptions = targetCurrencySelect.options;
-            for (let i = 0; i < targetOptions.length; i++) {
-                targetOptions[i].disabled = targetOptions[i].value === baseCurrency;
+            if (baseValue <= 0 || targetValue <= 0 || (baseAmount <= 0 && targetAmount <= 0)) {
+                convertedAmountDisplay.textContent = 'Error: Todos los valores deben ser positivos.';
+                return;
             }
-        }
+            if (baseAmount > 0 && targetAmount > 0) {
+                convertedAmountDisplay.textContent = 'Error: Solo ingrese un monto en una divisa.';
+                return;
+            }
 
-        // Initialize with default base currency
-        updateCurrencies(regionSelect.value.split('-')[0]);
+            // Calcular tasa y conversión
+            let rate, fromCurrency, toCurrency, convertedAmount;
 
-        // Convert button click event
-        convertBtn.addEventListener('click', convertCurrency);
-
-        // Real-time conversion on amount input
-        amountInput.addEventListener('input', () => {
-            if (amountInput.value) {
-                convertCurrency();
-            } else {
-                exchangeRateDisplay.textContent = '';
-                convertedAmountDisplay.textContent = '';
+            if (baseAmount > 0) {
+                // Conversión de Base a Destino
+                rate = baseValue / targetValue; // 1 Base = (baseValue / targetValue) Target
+                fromCurrency = baseCurrency;
+                toCurrency = targetCurrency;
+                convertedAmount = (baseAmount * rate).toFixed(2);
+                rateDisplay.textContent = `1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
+                convertedAmountDisplay.textContent = `${baseAmount} ${fromCurrency} = ${convertedAmount} ${toCurrency}`;
+            } else if (targetAmount > 0) {
+                // Conversión de Destino a Base
+                rate = targetValue / baseValue; // 1 Target = (targetValue / baseValue) Base
+                fromCurrency = targetCurrency;
+                toCurrency = baseCurrency;
+                convertedAmount = (targetAmount * rate).toFixed(2);
+                rateDisplay.textContent = `1 ${fromCurrency} = ${rate.toFixed(4)} ${toCurrency}`;
+                convertedAmountDisplay.textContent = `${targetAmount} ${fromCurrency} = ${convertedAmount} ${toCurrency}`;
             }
         });
     </script>
